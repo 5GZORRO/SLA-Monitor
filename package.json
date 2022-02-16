@@ -1,0 +1,19 @@
+{
+  "name": "sla-monitoring-test",
+  "version": "1.0.0",
+  "description": "Test component for SLA Monitoring",
+  "type": "module",
+  "author": "fgsantos@ubiwhere.com",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "dependencies": {
+    "@accordproject/cicero-core": "^0.22.0",
+    "@accordproject/cicero-engine": "^0.22.0",
+    "express": "^4.17.1",
+    "kafkajs": "^1.15.0"
+
+  }
+}

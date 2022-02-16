@@ -1,0 +1,34 @@
+version: '3'
+services:
+  myapp:
+    container_name: SLA-Monitor
+    build: .
+    command: npm run start
+    volumes:
+      - .:/usr/app/
+      - /usr/app/node_modules
+    ports:
+      - "8080:8080"
+
+
+  kafka:
+    image: spotify/kafka
+    container_name: kafka
+    ports:
+      - 9092:9092
+      - 29092:29092
+    environment:
+      - "ADVERTISED_HOST=kafka"
+      - "ADVERTISED_PORT=9092"
+      - "AUTO_CREATE_TOPICS=true" 
+      - "GROUP_ID=test-group"   
+
+    command: >
+      bash -c "(sleep 3s     
+      && /opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test-topic &) 
+      && (supervisord -n)"
+
+networks:
+  default:
+    external:
+      name: network

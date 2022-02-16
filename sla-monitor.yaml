@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sla-monitor-service
+spec:
+  selector:
+    app: sla-monitor
+  ports:
+  - port: 8080 
+    targetPort: 8080
+    nodePort: 30000
+  type: NodePort
+
+
+---
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sla-monitor-deployment 
+spec:
+  selector:
+    matchLabels:
+      app: sla-monitor
+  template:
+    metadata:
+      labels:
+        app: sla-monitor
+    spec:
+      #initContainers:
+        # get-kafka-info -> Init Container that checks/registers user in datalake and creates configmap with kafka information 
+      containers:
+      - name: sla-monitor
+        image: sfranciscobarao/sla-monitor 
+        imagePullPolicy: Always
+        envFrom:
+          - configMapRef:
+              name: sla-monitor-config
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "50m"
+
+            
+---
+
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sla-monitor-config
+data: 
+  KAFKA_TOPIC_IN : "sla-monitor-topic-in" 
+  KAFKA_TOPIC_OUT : "sla-monitor-topic-out" 
+  KAFKA_GROUP_ID : "none"
+  KAFKA_HOST : "172.28.3.196:9092"
