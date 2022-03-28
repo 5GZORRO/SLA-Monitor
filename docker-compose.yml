@@ -8,27 +8,39 @@ services:
       - .:/usr/app/
       - /usr/app/node_modules
     ports:
-      - "8080:8080"
-
-
-  kafka:
-    image: spotify/kafka
-    container_name: kafka
-    ports:
-      - 9092:9092
-      - 29092:29092
+      - "8080:8080" 
+    depends_on:
+      - redis
     environment:
-      - "ADVERTISED_HOST=kafka"
-      - "ADVERTISED_PORT=9092"
-      - "AUTO_CREATE_TOPICS=true" 
-      - "GROUP_ID=test-group"   
+      TMF_URL: http://172.28.3.126:31080/tmf-api/productCatalogManagement/v4/productOffering/ # TMF Catalog URL
+      DL_SUB_URL: http://172.28.3.46:30887/datalake/v1/stream_data/register/ # Datalake subscription URL
+      REDIS_URL: redis://redis:6379 # Redis Host 
+      DL_USER_ID: sla-monitor # Datalake User Id  
+      KAFKA_TOPIC_IN: sla-monitor-topic-in
+      KAFKA_TOPIC_OUT: sla-monitor-topic-out
+      KAFKA_TOPIC_SLA: isbp-topic
+      KAFKA_GROUP_ID : "none"
+      KAFKA_HOST : "172.28.3.196:9092"
 
-    command: >
-      bash -c "(sleep 3s     
-      && /opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test-topic &) 
-      && (supervisord -n)"
 
-networks:
-  default:
-    external:
-      name: network
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - '6379:6379'
+
+  #kafka:
+  #  image: spotify/kafka
+  #  container_name: kafka
+  #  ports:
+  #    - 9092:9092
+  #    - 29092:29092
+  #  environment:
+  #    ADVERTISED_HOST: kafka
+  #    ADVERTISED_PORT: '9092'
+  #    AUTO_CREATE_TOPICS: 'true'
+  #    GROUP_ID: test-group  
+  #  command: >
+  #    bash -c "(sleep 3s     
+  #    && /opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic test-topic &) 
+  #    && (supervisord -n)"

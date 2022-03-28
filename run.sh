@@ -4,8 +4,8 @@ docker-compose down
 docker-compose up -d --build
 
 printf "\033c"
-echo "\n\trunning on 8080\n"
+echo "running on 8080"
 
-sleep 3s
-curl localhost:8080 -m 2
+sleep 2s
+curl localhost:8080 -m 3
 docker logs --follow SLA-Monitor

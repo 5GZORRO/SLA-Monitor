@@ -1,0 +1,155 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sla-monitor-service
+spec:
+  selector:
+    app: sla-monitor
+  ports:
+  - port: 8080 
+    targetPort: 8080
+
+
+---
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sla-monitor-deployment 
+spec:
+  selector:
+    matchLabels:
+      app: sla-monitor
+  template:
+    metadata:
+      labels:
+        app: sla-monitor
+    spec:
+      initContainers:
+        #- get-kafka-info -> Possible Init Container that checks/registers user in datalake and creates configmap with kafka information 
+        
+        - name: dependencies # Checks if redis is Ready
+          image: bitnami/kubectl
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "/scripts/dependencies.sh"]
+          env:
+            - name: REQUIREMENT_PODS
+              value: app=redis
+            - name: max_timer
+              value: '300'
+            - name: namespace
+              value: sla-monitor
+          volumeMounts:
+              - mountPath: /scripts
+                name: scripts-volume
+
+      containers:
+      - name: sla-monitor
+        image: harbor.snob.ubiwhere.com/5gzorro/sla-monitor
+        imagePullPolicy: Always
+        envFrom:
+          - configMapRef:
+              name: sla-monitor-config
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "100m"
+      serviceAccountName: sla-monitor-sa
+      volumes: 
+        - name: scripts-volume 
+          configMap:
+            name: sla-monitor-scripts
+            defaultMode: 0744
+         
+            
+---
+
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sla-monitor-config
+data: 
+  # BCN URls
+  TMF_URL: http://172.28.3.126:31080/tmf-api/productCatalogManagement/v4/productOffering/ # TMF Catalog URL
+  DL_SUB_URL: http://172.28.3.46:30887/datalake/v1/stream_data/register/ # Datalake subscription URL
+  KAFKA_HOST : "172.28.3.196:9092"
+  REDIS_URL: redis://redis-service:6379 # Redis Host 
+  DL_USER_ID: sla-monitor # Datalake User Id  
+  KAFKA_TOPIC_IN: sla-monitor-topic-in
+  KAFKA_TOPIC_OUT: sla-monitor-topic-out
+  KAFKA_TOPIC_SLA: isbp-topic
+  KAFKA_GROUP_ID : "none"
+
+  # 5Tonic URLS
+  # TMF_URL: http://10.4.2.126:31100/tmf-api/productCatalogManagement/v4/productOffering/ # TMF Catalog URL
+  # DL_SUB_URL: http://10.4.2.36:8080/datalake/v1/stream_data/register/ # Datalake subscription URL
+  # KAFKA_HOST : "10.4.2.61:9092"
+
+
+---
+
+
+apiVersion: v1 
+kind: ConfigMap
+metadata:
+  name: sla-monitor-scripts
+data:
+  dependencies.sh: |
+    #!/bin/bash
+
+    PODS=($(echo ${REQUIREMENT_PODS} | sed 's/;/ /g')); ready_pods=0; 
+    for pod in "${PODS[@]}"; do 
+        pod_labels=$(echo ${pod} | cut -d'+' -f2); 
+        while [[ ${max_timer} -gt 0 ]]; do 
+        count_pods_ready=$(kubectl get pods -n ${namespace} -l ${pod_labels} -o go-template='{{range $index, $element := .items}}{{range .status.containerStatuses}}{{if .ready}}{{$element.metadata.name}}{{"\n"}}{{end}}{{end}}{{end}}' | wc -l);
+        if [[ ${count_pods_ready} -eq 0 ]]; then sleep 1; ((max_timer--)); echo "${max_timer}s"; 
+        else ((ready_pods++)); break; fi; 
+    done; done; 
+    if [[ ${ready_pods} -eq ${#PODS[@]} ]]; then exit 0; 
+    else exit -1; fi
+
+
+---
+
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sla-monitor-sa
+  namespace: sla-monitor
+
+
+---
+
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: sla-monitor
+  name: pod-r
+rules:
+  - apiGroups: [""] 
+    resources: ["pods"]
+    verbs: ["get", "watch", "list"]
+
+
+---
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sla-monitor_pod-r
+  namespace: sla-monitor
+subjects:
+  - kind: ServiceAccount
+    name: sla-monitor-sa 
+    namespace: sla-monitor
+roleRef:
+  kind: Role 
+  name: pod-r
+  apiGroup: rbac.authorization.k8s.io
