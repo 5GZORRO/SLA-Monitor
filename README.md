@@ -191,7 +191,10 @@ value: SLA
 
 ### **Monitorization Phase**
 
-2. From the Monitoring Data Event that is consumed from the Kafka Topic, we fetch the **ProductId**.
+![Monitorization Phase Expanded](images/monitoring.png)
+
+
+1. From the Monitoring Data Event that is consumed from the Kafka Topic, we fetch the **ProductId** and other needed information like **metricValue** and **metricName**. These fields are validated before continuing.
 
 ```
 Monitoring data event from MDA Example
@@ -212,11 +215,88 @@ data = {
 }
 ```
 
-3. This **ProductID** can be used to fetch the SLA from the local intermediate storage or to re-fetch it from the SCLCM component (As previously mentioned in the Preparation Phase) if needed.
+2. This **ProductID** can be used to fetch the SLA from the local intermediate storage or to re-fetch it from the SCLCM component (As previously mentioned in the Preparation Phase) if needed.
 
-4. [TO DO]
+3. After fetching the SLA, we extract the required information from it:
+```
+Id    - For filling in the the violation if required.
+Href  - For filling in the the violation if required.
+Rules - So we can find the values to check if a violation occurred.
+```
+
+4. With the Rules array, we then search for a clause that has the same metric name that of the monitoring data event. Having that specific clause/rule we then verify if it has all the fields required:
+```
+operator - Indicator or the range we want (For availability we want data to have values greater than some base value)
+referenceValue - Base value that is compared with the actual recorded data
+tolerance - Error margin for the value
+```
+
+5. We check for violations in the following way. Based on the operator, we either sum or subtract the tolerance to the reference value and compare it to the actual data obtained from the monitoring event. That is because the operator defines how the tolerance affects the outcome.  
+For example, for availability, for a violation to occur, the value read must be smaller than the reference - tolerance (99.95 - 0.05 > value).   
+As to the response time, for a violation to occur, the value read must be bigger than the reference + tolerance (80 + 15 < value)   
+
+```
+case '.g':
+  return value > reference + tolerance 
+case '.ge':
+  return value >= reference + tolerance 
+case '.l':
+  return value < reference - tolerance
+case '.le':
+  return value <= reference - tolerance 
+case '.eq':
+  return reference - value == 0
+```
+
+Examples:
+```
+if response is greater than 80 + 15 -> violated (value >= reference + tolerance)
+if availability is lesser than 99.95 - 0.05 -> violated (value <= reference - tolerance )
+if requests/min is greater than 2600 + 100 -> violated (value >= reference + tolerance )
+```
 
 
+6. Next, if step 5. was sucessful and a violation occurred, we now have to create the violation 
+How we create the violation
+```
+{
+  "id": uuidv4(),
+  "productID": productID
+  "sla": {
+    "id": slaId, 
+    "href": slaHref
+  },
+  "rule": rule,
+  "violation": {
+    "actualValue": value,
+  }
+}
+```
+
+Violation Example
+```
+{
+  "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d", 
+  "productID": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "sla": {
+    "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d", 
+    "href": "http://www.acme.com/slaManagement/sla/123444"
+  },
+  "rule": {
+    "id": "availability",
+    "metric": "http://www.provider.com/metrics/availability",
+    "unit": "%",
+    "referenceValue": "99.95",
+    "operator": ".ge",
+    "tolerance": "0.05",
+    "consequence": "http://www.provider.com/contract/claus/30"
+  },
+  "violation": {
+    "actualValue": "90.0",
+}
+```
+
+7. Last but not least, after creating the violation, we need to push the violation event to the output kafka topic previously provided by the datalake.
 
 
 ## How logic should be using Accord Project
@@ -327,3 +407,17 @@ Check all users
   curl -i -H "Content-Type: application/json" -X GET -d ' { "userId": "sla-monitor", "authToken": "blah" } ' 172.28.3.94:8080/datalake/v1/user/all
 ```
 
+
+
+
+# Links
+
+SCLCM Swagger
+```
+http://172.28.3.111:31080/smart-contract-lifecycle-manager/swagger-ui/index.html?configUrl=/smart-contract-lifecycle-manager/api-docs/swagger-config#/
+```
+
+TMF Catalog Swagger
+```
+http://172.28.3.126:31080/tmf-api/swagger-ui/#/
+```
