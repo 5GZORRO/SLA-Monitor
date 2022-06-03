@@ -163,7 +163,7 @@ export default class KafkaConsumer{
   createViolation(productId, slaId, slaHref, rule, value){
     return {
       "id": uuidv4(),
-      "productID": productId, 
+      "productDID": productId, 
       "sla": { "id": slaId, "href": slaHref },
       "rule": rule,
       "violation": { "actualValue": value }
