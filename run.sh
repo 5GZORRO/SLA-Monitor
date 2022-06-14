@@ -1,6 +1,6 @@
 # Script to run docker-compose locally that contains Kafka and SLA-Monitor
  
-docker-compose down
+docker-compose down 
 docker-compose up -d --build
 
 printf "\033c"

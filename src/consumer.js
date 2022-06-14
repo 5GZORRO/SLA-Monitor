@@ -52,14 +52,11 @@ export default class KafkaConsumer{
         const metricName = messageJson.monitoringData.metricName 
         if (this.isFieldInvalid(metricName)) return;
 
-
         // Get SLA
-        const sla = await this.getSLA(productId)
+        let sla = await this.getSLA(productId)
         if (sla == null) return;
-        
 
         // Extract data from SLA     
-        //const sla_json = JSON.parse(sla)
         const rules = sla.rule
         if (this.isFieldInvalid(rules)) return;
 
@@ -68,11 +65,10 @@ export default class KafkaConsumer{
 
         const slaHref = sla.href
         if (this.isFieldInvalid(slaHref)) return; 
-        
+
         // SLAs can have several rules, so we fetch the correct one
         const rule = this.getRuleByMetricName(metricName, rules)
         if (rule == null) return; // SLA doesnt have that metric
-
 
 
         // Get Rule information from SLA
@@ -80,7 +76,6 @@ export default class KafkaConsumer{
         const reference = parseFloat(rule.referenceValue)
         const tolerance = parseFloat(rule.tolerance)
         if (this.isFieldInvalid(operator) || isNaN(reference) || isNaN(tolerance)) return;
-
 
         // Check for Violations
         const isViolated = this.isViolated(operator, reference, value, tolerance)
@@ -117,8 +112,7 @@ export default class KafkaConsumer{
       await redisClient.create(productId, JSON.stringify(sla)) // Store SLA
       return sla
     }
-
-    return slaRedis
+    return JSON.parse(slaRedis)
   }
 
   // Method that verifies if the field is undefined or empty
