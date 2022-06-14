@@ -33,6 +33,7 @@ app.listen(port, () => {
   kafka_consumer_in.listenMonitor(kafka_topic_in, true); 
 });
 
+/*
 app.get('/', (req, res) => {
     
   const data = {
@@ -79,4 +80,4 @@ app.get('/', (req, res) => {
   }
 
   producer.sendMessage(kafka_topic_in, JSON.stringify(data3))
-})
+})*/
