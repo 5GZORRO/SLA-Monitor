@@ -87,6 +87,8 @@ export default class KafkaConsumer{
         
           const kafkaProducer = new KafkaProducer(this.kafka);
           kafkaProducer.sendMessage(kafka_topic_out, JSON.stringify(violation));
+
+          await new External().changeSlaState(productId, slaId, "VIOLATED") // Update SLA Status on SCLCM
         } 
         
         else console.log("No violation")

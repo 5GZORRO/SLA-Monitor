@@ -22,6 +22,10 @@ const redisClient = {
     if (_redisClient) await _redisClient.set(key, value);
   },
 
+  async delete(key) {
+    if (_redisClient) await _redisClient.del(key);
+  },
+
   async read(key) {
     console.log("Reading DB entry - key:" + key)
     if (_redisClient) return await _redisClient.get(key)

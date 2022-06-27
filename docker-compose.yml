@@ -14,6 +14,7 @@ services:
     environment:
       # TMF_URL: http://172.28.3.126:31080/tmf-api/productCatalogManagement/v4/productOffering/ # TMF Catalog URL
       TMF_URL: http://172.28.3.15:31080/tmf-api/productCatalogManagement/v4/productOffering/
+      SCLCM_URL: http://172.28.3.6:31080/smart-contract-lifecycle-manager/api/v1/service-level-agreement # SCLCM URL 
       DL_SUB_URL: http://172.28.3.94:8080/datalake/v1/stream_data/register/ # Datalake subscription URL
       REDIS_URL: redis://redis:6379 # Redis Host 
       DL_USER_ID: sla-monitor # Datalake User Id  
