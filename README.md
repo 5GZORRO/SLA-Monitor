@@ -1,8 +1,7 @@
 # SLA-Monitor
 Repository for the SLA-Monitor component
 
-## Modules
-
+## Introduction
 Code divided into 5 modules. 
 ```
 consumer.js - Contains logic for Kafka consumers (SLA and Monitoring consumers)
@@ -18,10 +17,7 @@ We have 2 Kafka consumers since we listen to 2 kafka-topics:
 2. sla-monitoring-topic-in   - New monitoring data events 
 ```
 
-
-
-## Logic
-
+### Logic
 Logic in the component can be separated into two phases.
 1. **Preparation**
 In this phase we listen to a previously set kafka topic (isbp-topic) in which ProductIds, related to a specific SLA, to be monitored arrive as events. These events are copied over in the Datalake and come from the ISSM. The arrival of such event, triggers a sequence of logic:
@@ -33,7 +29,7 @@ In this phase we listen to a previously set kafka topic (isbp-topic) in which Pr
 
 ![Preparation Phase](images/preparation_phase.png)
 
-2. **Monitorization**
+2. **Monitoring**
 In this phase, we wait for data to arrive to our kafka input topic and when it does we check if a clause has been violated, emitting a violation if needed. It stands to reason that while the monitoring data comes from the MDA, it is the datalake that copies it into our input topic.
 
 -  (Pre-Setup) Connect to sla-monitor-topic-in in the datalake
@@ -48,9 +44,8 @@ In this phase, we wait for data to arrive to our kafka input topic and when it d
 
 ![Monitorization Phase](images/monitorization_phase.png)
 
-
-## Logic Expanded
-### **Preparation Phase**
+### Logic Expanded
+#### **Preparation Phase**
 
 1. From the SLA Data Event that is consumed from the Kafka Topic, we fetch the **ProductId**. In the isbp-topic there are 2 types of events arriving
 - New SLA ACK data event from ISSM Example
@@ -189,7 +184,7 @@ value: SLA
 6. Last but not least, we move on to using the **ProductId** to subscribe to that products events in the datalake. This subscription will trigger the datalake to copy all present and future events to our input topic.
 
 
-### **Monitorization Phase**
+#### **Monitoring Phase**
 
 ![Monitorization Phase Expanded](images/monitoring.png)
 
@@ -298,65 +293,7 @@ Violation Example
 
 7. Last but not least, after creating the violation, we need to push the violation event to the output kafka topic previously provided by the datalake.
 
-
-## How logic should be using Accord Project
-0. Monitoring Data arrives and we fetch the template
-1. Instantiate Template
-2. Add Clauses
-3. Trigger the Logic (Previously implemented in the Template) using the monitoring data event
-4. If needed, Emit a Violation
-
-### Practical
-As to the SLA logic (In Accord Project) we basically:
-
-1. Instantiate the SLA Engine
-```
-const sla = new SLA();
-```
-
-2. Set the Template (For testing scenario we use a local template)
-```
-await sla.setTemplateFromLocalArchive('./examples/full-payment-upon-demand@0.9.0.cta');
-```
-3. Set Clauses Data 
-```
-const clauseJson = {
-  data: {
-    $class:
-    "org.accordproject.payment.fullupondemand.FullPaymentUponDemandTemplate",
-    buyer: "resource:org.accordproject.party.Party#Dan",
-    seller: "resource:org.accordproject.party.Party#Jerome",
-    value: {
-    $class: "org.accordproject.money.MonetaryAmount",
-    doubleValue: 3.14,
-    currencyCode: "EUR",
-  },
-  contractId: "d3b7e05a-d889-4604-b4bf-3c72eb773d4c",
-  $identifier: "d3b7e05a-d889-4604-b4bf-3c72eb773d4c", },};
-
-
-sla.setClauseData(clauseJson.data);
-```
-4. Trigger the Logic
-```
-var requestJson = {
-  request: {
-  $class: "org.accordproject.payment.fullupondemand.PaymentDemand",
-  $timestamp: "2021-04-27T13:10:37.715-04:00",
-  },
-  state: {
-  $class:
-      "org.accordproject.payment.fullupondemand.FullPaymentUponDemandState",
-  status: "INITIALIZED",
-  $identifier: "7c89e540-a77b-11eb-9770-7ddd576a12c2",
-  },
-  contractId: "d3b7e05a-d889-4604-b4bf-3c72eb773d4c",
-};
-
-const result = await sla.engineTrigger(requestJson.request, requestJson.state);
-```
-
-## Datalake Interaction
+### Datalake Interaction
 Firstly, we need to register a user
 ```
   curl -i -H "Content-Type: application/json" -X POST -d ' { "userId": "sla-monitor", "authToken": "blah" } ' 172.28.3.94:8080/datalake/v1/user
@@ -410,7 +347,10 @@ Check all users
 
 
 
-# Links
+## Prerequisites
+
+### 5GZORRO Module dependencies
+For the SLA-Monitoring we have to connect to the Datalake which provides us with the Input and output topics from which we can subscribe and publish data into. Additionally, we must directly interact with the TMF Catalog to fetch the product and with the SCLCM to retrieve the SLA and also to notify when a violation occurs.  
 
 SCLCM Swagger
 ```
@@ -421,3 +361,53 @@ TMF Catalog Swagger
 ```
 http://172.28.3.126:31080/tmf-api/swagger-ui/#/
 ```
+
+## Docker Deployment
+In order to locally launch this component we can use the [run.sh](run.sh) script which brings the docker containers up.
+
+## Kubernetes Deployment
+This deploy consists of the SLA-Monitoring component and a redis used for caching. These images are pushed to Ubiwhere's docker hub repo and they are used by the k8s repo.
+
+In order to deploy to the existing Kubernetes instance, you'll need to connect to the project's VPN.
+
+After that, you will need to:
+
+* Setup kubectl: 
+    * Install kubectl (client version should be at least 21.1)
+    * BCN testbed
+        * Move/copy the platcmpk8sconfig file to the kubectl config (usually the ~/.kube/config file).
+            - cp ./deployment/platcmpk8sconfig ~/.kube
+            - export KUBECONFIG=~/.kube/platcmpk8sconfig
+            - kubectl config use-context platcmp-platcmp-k8s-ctrl1
+    * 5tonic testbed
+        * Move/copy the k8sconfig-5tonic.yaml file to the kubectl config (usually the ~/.kube/config file).  
+        - cp ./deployment/k8sconfig-5tonic.yaml ~/.kube
+        - export KUBECONFIG=~/.kube/k8sconfig-5tonic.yaml
+     * After this, you should be able to access the cluster. You can test this by running something like `kubectl get pods`, which should return the list of pods running in the cluster.
+  
+* Generate the SLA-Monitoring image:
+    For this, use the [k8s.sh](k8s.sh) script provided.
+    * Build the image: 
+        ```bash
+        docker build . -t sla-monitor
+        ```
+    * Login to docker hub with an account with privileges to push images under the Ubiwhere organization: 
+        ```bash
+        $ docker login --username <username>
+        ```
+    * Tag and Push the image to the respective registry:
+      ```bash
+        docker tag sla-monitor ubiwhere/sla-monitor
+        docker push ubiwhere/sla-monitor
+      ```
+
+* Deploy in the barcelona or 5tonic cluster. The deployment files can be found on the `/k8s` folder. 
+
+    * Delete the previous deploy: `kubectl delete -f k8s/sla-monitor.yaml`
+    * Create a new deploy: `kubectl create -f k8s/sla-monitor.yaml`
+        * Note: change the deployment file accordingly. The urls passed as environment variables must be changed depending on the testbed.
+
+
+## Maintainers
+**Francisco Barão Santos** - fgsantos@ubiwhere.com
+
