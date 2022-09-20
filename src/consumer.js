@@ -66,6 +66,25 @@ export default class KafkaConsumer{
         const slaHref = sla.href
         if (this.isFieldInvalid(slaHref)) return; 
 
+        /*const approvalDate = sla.approvalDate
+        if (this.isFieldInvalid(approvalDate)) return; 
+        approvalDate_Time = convertDateToTime(approvalDate)
+
+        const timeToDeployBreach = sla.time_to_deploy
+        if (this.isFieldInvalid(timeToDeployBreach)) return; 
+        timeToDeployBreach_Time = convertDateToTime(timeToDeployBreach)
+
+        // Get current time
+        const currentDate = new Date();
+        const currentTime = currentDate.getTime();
+
+        // Check if the SLA is violated due to time breach
+        const isViolated = isTimeBreachViolated(currentTime, approvalDate_Time, timeToDeployBreach_Time)
+        if (isViolated){
+        //  ....
+        }
+        */
+
         // SLAs can have several rules, so we fetch the correct one
         const rule = this.getRuleByMetricName(metricName, rules)
         if (rule == null) return; // SLA doesnt have that metric
@@ -78,7 +97,7 @@ export default class KafkaConsumer{
         if (this.isFieldInvalid(operator) || isNaN(reference) || isNaN(tolerance)) return;
 
         // Check for Violations
-        const isViolated = this.isViolated(operator, reference, value, tolerance)
+        isViolated = this.isViolated(operator, reference, value, tolerance)
         if (isViolated == null) return;  // If there is an unknown operator
 
         if (isViolated){
@@ -88,7 +107,7 @@ export default class KafkaConsumer{
           const kafkaProducer = new KafkaProducer(this.kafka);
           kafkaProducer.sendMessage(kafka_topic_out, JSON.stringify(violation));
 
-          await new External().changeSlaState(productId, slaId, "VIOLATED") // Update SLA Status on SCLCM
+          await new External().sclcmNotification(productId, slaId, "VIOLATED") // Update SLA Status on SCLCM
         } 
         
         else console.log("No violation")
@@ -126,6 +145,14 @@ export default class KafkaConsumer{
     return false;  
   }
 
+  /*convertDateToTime(date){
+    return new Date(date).getTime(); 
+  }
+
+  isTimeBreachViolated(currentTime, approvalDate_Time, timeToDeployBreach_Time){
+    return currentTime - approvalDate_Time >= timeToDeployBreach_Time
+  }
+*/
   // Method that verifies if a violation occurred
   isViolated(operator, reference, value, tolerance){  // If true -> Violated  
     switch (operator) {

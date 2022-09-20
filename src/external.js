@@ -22,12 +22,12 @@ export default class External{
         await this.makePostRequest(subscribeUrl, data, headers) // Subscribe to certain product in Datalake
     }
 
-    async changeSlaState(productOrderDID, slaDID, state){
+    // Method used to Wrongly notify SCLCM directly instead of them subscribing to kafka topic
+    async sclcmNotification(productOrderDID, slaDID, state){
         const data = { "productOrderDID": productOrderDID, "serviceLevelAgreementDID": slaDID, "state": state }
         const headers = {'Content-Type': 'application/json' }
-        await this.makePatchRequest(process.env.SCLCM_URL, data, headers) // Subscribe to certain product in Datalake
+        await this.makePatchRequest(process.env.SCLCM_URL, data, headers) // Send Patch request to SCLCM
       }
-
 
     async makePostRequest(url, data, headers){
         console.log("POST Request to: " + url)

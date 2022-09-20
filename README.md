@@ -287,7 +287,8 @@ Violation Example
     "consequence": "http://www.provider.com/contract/claus/30"
   },
   "violation": {
-    "actualValue": "90.0",
+    "actualValue": "90.0"
+  }
 }
 ```
 
@@ -411,3 +412,16 @@ After that, you will need to:
 ## Maintainers
 **Francisco Barão Santos** - fgsantos@ubiwhere.com
 
+
+
+We are sending this email regarding the time_to_deploy issue.
+
+We reiterate the fact that the SLA Monitoring is event based and therefore, when new SLA events arrive in the ISBP topic, we add these SLAs to our local cache and contact the Datalake to start receiving monitoring data events regarding that specific SLA.
+In addition to this, the monitoring process where we check whether violations occur, happens every time monitoring data arrives from the MDA.
+During the GA, we were solicited to add a specific violation scenario where the time_to_deploy metric, present in the SLA, has been surprassed. 
+However, it stands to notice that since we only trigger the monitoring process on the arrival of events from the MDA, we can only verify if this time_to_deploy scenario has been surpassed, when those events arrival. In other words, we are not constantly checking if this timestamp has been surpassed and neither is this how the SLA Monitoring is intended to work given its event-based nature.
+
+We can still sporadically, when monitoring data events arrive, verify if this timestamp has been surpassed and therefore violated, but if it is required to be constantly monitored (real-time), than perhaps this issue should be revisited and reworked.
+
+Thank you in advance,
+Best Regards,
