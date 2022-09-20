@@ -34,7 +34,7 @@ In this phase, we wait for data to arrive to our kafka input topic and when it d
 
 -  (Pre-Setup) Connect to sla-monitor-topic-in in the datalake
 - Monitoring Data Event Arrives 
-  - Retrieve the ProductId from the Event
+  - Retrieve the TransactionId and ProductId from the Event
 - Get the SLA from Storage
   - (If not stored) Get the Product from the TMF Catalog API using this ProductId
   - (If not stored) Retrieve the SLA id from the Product 
@@ -47,7 +47,7 @@ In this phase, we wait for data to arrive to our kafka input topic and when it d
 ### Logic Expanded
 #### **Preparation Phase**
 
-1. From the SLA Data Event that is consumed from the Kafka Topic, we fetch the **ProductId**. In the isbp-topic there are 2 types of events arriving
+1. From the SLA Data Event that is consumed from the Kafka Topic, we fetch the **ProductId** and the **TransactionId**. In the isbp-topic there are 2 types of events arriving
 - New SLA ACK data event from ISSM Example
 ```
 {
@@ -175,9 +175,9 @@ In this phase, we wait for data to arrive to our kafka input topic and when it d
       } } ] }
 ```
 
-5. Having the **SLA**, we store it in a Key-Value storage (Redis in this case) so as to have an intermediate storage which will allow us to more quickly retrive the SLA in question without having to query other components. Stored in the following format:
+5. Having the **SLA**, we store it in a Key-Value storage (Redis in this case) so as to have an intermediate storage which will allow us to more quickly retrive the SLA in question without having to query other components. In this step, we use the **transactionId** as the key for storage. Stored in the following format:
 ```
-key: productId
+key: transactionId
 value: SLA 
 ```
 
@@ -189,7 +189,7 @@ value: SLA
 ![Monitorization Phase Expanded](images/monitoring.png)
 
 
-1. From the Monitoring Data Event that is consumed from the Kafka Topic, we fetch the **ProductId** and other needed information like **metricValue** and **metricName**. These fields are validated before continuing.
+1. From the Monitoring Data Event that is consumed from the Kafka Topic, we fetch the **TransactionID** and other needed information like **metricValue** and **metricName**. These fields are validated before continuing.
 
 ```
 Monitoring data event from MDA Example
@@ -210,9 +210,9 @@ data = {
 }
 ```
 
-2. This **ProductID** can be used to fetch the SLA from the local intermediate storage or to re-fetch it from the SCLCM component (As previously mentioned in the Preparation Phase) if needed.
+1. This **TransactionID** can be used to fetch the SLA from the local intermediate storage and if it is needed, we can use the **ProductID** re-fetch it from the SCLCM component (As previously mentioned in the Preparation Phase) if needed.
 
-3. After fetching the SLA, we extract the required information from it:
+2. After fetching the SLA, we extract the required information from it:
 ```
 Id    - For filling in the the violation if required.
 Href  - For filling in the the violation if required.
@@ -256,7 +256,8 @@ How we create the violation
 ```
 {
   "id": uuidv4(),
-  "productID": productID
+  "productId": productID,
+  "transactionId": transactionID
   "sla": {
     "id": slaId, 
     "href": slaHref
@@ -273,6 +274,7 @@ Violation Example
 {
   "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d", 
   "productID": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "transactionID": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d", 
   "sla": {
     "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d", 
     "href": "http://www.acme.com/slaManagement/sla/123444"

@@ -23,9 +23,11 @@ export default class KafkaConsumer{
 
         const messageJson = JSON.parse(message.value.toString()) 
         const productId = messageJson.productID // Retrieve the ProductID from the New SLA Event
-        if (this.isFieldInvalid(productId)) return;
+        const transactionId = messageJson.transactionID // Retrieve the TransacationID from the New SLA Event
 
-        const sla = await this.getSLA(productId) 
+        if (this.isFieldInvalid(productId) || this.isFieldInvalid(transactionId)) return;
+
+        const sla = await this.getSLA(productId, transactionId) 
         if (sla == null) return;
 
         await new External().subscribeDL(productId) // Subscribe to the Datalake Product
@@ -46,6 +48,9 @@ export default class KafkaConsumer{
         const productId = messageJson.monitoringData.productID 
         if (this.isFieldInvalid(productId)) return;
 
+        const transactionId = messageJson.monitoringData.transactionID 
+        if (this.isFieldInvalid(transactionId)) return;
+
         const value = messageJson.monitoringData.metricValue
         if (this.isFieldInvalid(value)) return;
         
@@ -53,7 +58,7 @@ export default class KafkaConsumer{
         if (this.isFieldInvalid(metricName)) return;
 
         // Get SLA
-        let sla = await this.getSLA(productId)
+        let sla = await this.getSLA(productId, transactionId)
         if (sla == null) return;
 
         // Extract data from SLA     
@@ -101,7 +106,7 @@ export default class KafkaConsumer{
         if (isViolated == null) return;  // If there is an unknown operator
 
         if (isViolated){
-          const violation = this.createViolation(productId, slaId, slaHref, rule, value)
+          const violation = this.createViolation(productId, transactionId, slaId, slaHref, rule, value)
           console.log("Violation Occurred: "+JSON.stringify(violation, null, 2))
         
           const kafkaProducer = new KafkaProducer(this.kafka);
@@ -118,19 +123,19 @@ export default class KafkaConsumer{
 
 
   // Method that fetches the SLA either from Redis or from HTTP Requests to external components
-  async getSLA(productId){
+  async getSLA(productId, transactionId){
     await redisClient.createClient()
-    const slaRedis = await redisClient.read(productId)
+    const slaRedis = await redisClient.read(transactionId)
     
     if (slaRedis == null){ 
-      console.log("SLA with productId: " + productId + " doesn't exist on Redis")
-      const sla = await new External().fetchSLA(productId) // Get the SLA from SCLCM
+      console.log("SLA with transactionId: " + transactionId + " doesn't exist on Redis")
+      const sla = await new External().fetchSLA(productId) // Get the SLA from SCLCM (Must be productID)
 
       if(sla == undefined){ 
         console.log("Error fetching the SLA with productId: " + productId)
         return null;       
       }   
-      await redisClient.create(productId, JSON.stringify(sla)) // Store SLA
+      await redisClient.create(transactionId, JSON.stringify(sla)) // Store SLA
       return sla
     }
     return JSON.parse(slaRedis)
@@ -183,10 +188,11 @@ export default class KafkaConsumer{
   }
 
   // Method that creates the violation json
-  createViolation(productId, slaId, slaHref, rule, value){
+  createViolation(productId, transactionId, slaId, slaHref, rule, value){
     return {
       "id": uuidv4(),
-      "productDID": productId, 
+      "productDID": productId,
+      "transactionID": transactionId, 
       "sla": { "id": slaId, "href": slaHref },
       "rule": rule,
       "violation": { "actualValue": value }
