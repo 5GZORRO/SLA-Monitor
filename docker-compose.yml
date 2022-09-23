@@ -22,7 +22,6 @@ services:
       KAFKA_TOPIC_OUT: sla-monitor-topic-out
       KAFKA_TOPIC_SLA: isbp-topic
       KAFKA_GROUP_ID : "none"
-      #KAFKA_HOST : "kafka:9092"
       KAFKA_HOST : "172.28.3.196:9092"
 
 
@@ -37,20 +36,4 @@ services:
 
 volumes:
   redis_data:
-  #kafka:
-  #  image: spotify/kafka
-  #  container_name: kafka
-  #  ports:
-  #    - 9092:9092
-  #    - 29092:29092
-  #  environment:
-  #    ADVERTISED_HOST: kafka
-  #    ADVERTISED_PORT: '9092'
-  #    AUTO_CREATE_TOPICS: 'true'
-  #    GROUP_ID: none  
-  #  command: >
-  #    bash -c "(sleep 3s     
-  #    && /opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic new-sla
-  #    && /opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic monitoring 
-  #    && /opt/kafka_2.11-0.10.1.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic output &) 
-  #    && (supervisord -n)"
+ 
