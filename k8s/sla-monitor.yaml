@@ -75,7 +75,7 @@ metadata:
 data: 
   # BCN URls
   # TMF_URL: http://172.28.3.126:31080/tmf-api/productCatalogManagement/v4/productOffering/ # TMF Catalog URL
-  TMF_URL: http://172.28.3.15:31080/tmf-api/swagger-ui/#/product-offering-controller/retrieveProductOfferingByDID # TMF Catalog URL for DIDs
+  TMF_URL: http://172.28.3.15:31080/tmf-api/swagger-ui/#/product-offering-controller/retrieveProductOfferingByDID/ # TMF Catalog URL for DIDs
   DL_SUB_URL: http://172.28.3.94:30887/datalake/v1/stream_data/register/ # Datalake subscription URL
   SCLCM_URL: http://172.28.3.6:31080/smart-contract-lifecycle-manager/api/v1/service-level-agreement # SCLCM URL 
   KAFKA_HOST : "172.28.3.196:9092"
@@ -88,7 +88,7 @@ data:
 
   # 5Tonic URLS
   # TMF_URL: http://10.4.2.126:31100/tmf-api/productCatalogManagement/v4/productOffering/ # TMF Catalog URL
-  # TMF_URL: http://10.4.2.126:31080/tmf-api/swagger-ui/#/product-offering-controller/retrieveProductOfferingByDID # TMF Catalog URL for DIDs
+  # TMF_URL: http://10.4.2.126:31080/tmf-api/swagger-ui/#/product-offering-controller/retrieveProductOfferingByDID/ # TMF Catalog URL for DIDs
   # DL_SUB_URL: http://10.4.2.36:8080/datalake/v1/stream_data/register/ # Datalake subscription URL
   # SCLCM_URL: http://172.28.3.6:31080/smart-contract-lifecycle-manager/api/v1/service-level-agreement # SCLCM URL 
   # KAFKA_HOST : "10.4.2.61:9092"
