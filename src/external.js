@@ -1,18 +1,26 @@
 import axios from 'axios';
 export default class External{
+    async fetchSLA(slaId){
+        const slaUrl = process.env.SCLCM_URL + slaId
+        const sla = await this.makeGetRequest(slaUrl)
+        if (sla != undefined) return sla;
+        return;
 
-    async fetchSLA(productId){
-        const productUrl = process.env.TMF_URL + productId
+        // No longer fetching Product from TMF. Now we have the SLA_ID to be used directly to SCLCM
+        /* const productUrl = process.env.TMF_URL + productId
         const product = await this.makeGetRequest(productUrl) // Fetch Product with the productId
         if(product != undefined) {
+            if (product.serviceLevelAgreement == undefined) {
+                console.log("Fetched product has no SLA field")
+                return;
+            }
             const slaHref = product.serviceLevelAgreement.href // Remove sla Href which is the path to fetch the SLA from.
             
             if(slaHref != ''){ // If SLA href is present
                 const sla = await this.makeGetRequest(slaHref)
                 if (sla != undefined) return sla;
             }
-        }
-        return;
+        }*/
     }
 
     async subscribeDL(productId){

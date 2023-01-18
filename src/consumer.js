@@ -24,10 +24,11 @@ export default class KafkaConsumer{
         const messageJson = JSON.parse(message.value.toString()) 
         const productId = messageJson.productID // Retrieve the ProductID from the New SLA Event
         const transactionId = messageJson.transactionID // Retrieve the TransacationID from the New SLA Event
+        const slaId = messageJson.SLAID // Retrieve the SLAID from the New SLA Event
 
-        if (this.isFieldInvalid(productId) || this.isFieldInvalid(transactionId)) return;
+        if (this.isFieldInvalid(productId) || this.isFieldInvalid(transactionId) || this.isFieldInvalid(slaId)) return;
 
-        const sla = await this.getSLA(productId, transactionId) 
+        const sla = await this.getSLA(slaId, transactionId) 
         if (sla == null) return;
 
         await new External().subscribeDL(productId) // Subscribe to the Datalake Product
@@ -44,21 +45,26 @@ export default class KafkaConsumer{
         console.log("New Monitoring Data Event: ", message.value.toString() )
         
         // Get and validate Data from the monitoring data event
-        const messageJson = JSON.parse(message.value.toString()) 
+        const messageJson = JSON.parse(message.value.toString())
+        
+        if (this.isFieldInvalid(messageJson.monitoringData)) return;
+
+        const transactionId = messageJson.transactionID 
+        if (this.isFieldInvalid(transactionId)) return;
+
         const productId = messageJson.monitoringData.productID 
         if (this.isFieldInvalid(productId)) return;
 
-        const transactionId = messageJson.monitoringData.transactionID 
-        if (this.isFieldInvalid(transactionId)) return;
 
         const value = messageJson.monitoringData.metricValue
-        if (this.isFieldInvalid(value)) return;
-        
+        if(value == undefined) {console.log("Error fetching the field: undefined"); return;}
+      
+
         const metricName = messageJson.monitoringData.metricName 
         if (this.isFieldInvalid(metricName)) return;
 
         // Get SLA
-        let sla = await this.getSLA(productId, transactionId)
+        let sla = await this.getSLA(null, transactionId)
         if (sla == null) return;
 
         // Extract data from SLA     
@@ -70,6 +76,10 @@ export default class KafkaConsumer{
 
         const slaHref = sla.href
         if (this.isFieldInvalid(slaHref)) return; 
+
+        //const slaProductDID = sla.productDID
+        //if (this.isFieldInvalid(slaProductDID)) return; 
+
 
         /*const approvalDate = sla.approvalDate
         if (this.isFieldInvalid(approvalDate)) return; 
@@ -92,7 +102,10 @@ export default class KafkaConsumer{
 
         // SLAs can have several rules, so we fetch the correct one
         const rule = this.getRuleByMetricName(metricName, rules)
-        if (rule == null) return; // SLA doesnt have that metric
+        if (rule == null) {
+          console.log("No rule with this metric name")
+          return;
+        } // SLA doesnt have that metric
 
 
         // Get Rule information from SLA
@@ -102,8 +115,8 @@ export default class KafkaConsumer{
         if (this.isFieldInvalid(operator) || isNaN(reference) || isNaN(tolerance)) return;
 
         // Check for Violations
-        isViolated = this.isViolated(operator, reference, value, tolerance)
-        if (isViolated == null) return;  // If there is an unknown operator
+        const isViolated = this.isViolated(operator, reference, value, tolerance)
+        if (isViolated == null ) return;  // If there is an unknown operator
 
         if (isViolated){
           const violation = this.createViolation(productId, transactionId, slaId, slaHref, rule, value)
@@ -123,21 +136,28 @@ export default class KafkaConsumer{
 
 
   // Method that fetches the SLA either from Redis or from HTTP Requests to external components
-  async getSLA(productId, transactionId){
+  async getSLA(slaId, transactionId){
     await redisClient.createClient()
     const slaRedis = await redisClient.read(transactionId)
     
     if (slaRedis == null){ 
       console.log("SLA with transactionId: " + transactionId + " doesn't exist on Redis")
-      const sla = await new External().fetchSLA(productId) // Get the SLA from SCLCM (Must be productID)
+
+      if (slaId == null){ 
+        console.log("SLA cannot be fetched since it is not on Redis and we don't have SLAID")
+        return 
+      }
+
+      const sla = await new External().fetchSLA(slaId) // Get the SLA from SCLCM (Must be slaId)
 
       if(sla == undefined){ 
-        console.log("Error fetching the SLA with productId: " + productId)
+        console.log("Error fetching the SLA with slaId: " + slaId)
         return null;       
       }   
       await redisClient.create(transactionId, JSON.stringify(sla)) // Store SLA
       return sla
     }
+    //console.log(slaRedis)
     return JSON.parse(slaRedis)
   }
 
@@ -195,7 +215,7 @@ export default class KafkaConsumer{
       "transactionID": transactionId, 
       "sla": { "id": slaId, "href": slaHref },
       "rule": rule,
-      "violation": { "actualValue": value }
+      "violation": { "actualValue": value.toString() }
     }
   }
 }

@@ -22,23 +22,21 @@ Logic in the component can be separated into two phases.
 1. **Preparation**
 In this phase we listen to a previously set kafka topic (isbp-topic) in which ProductIds, related to a specific SLA, to be monitored arrive as events. These events are copied over in the Datalake and come from the ISSM. The arrival of such event, triggers a sequence of logic:
  - Listen to isbp-topic for Events containing ProductID.
- - Fetch Product from TMF Catalog using the ProductID and retrieve the SLA_ID or the SLA_Href.
-   - Fetch SLA from SCLCM using the SLA_ID or the SLA_Href
+ - (Deprecated) Fetch Product from TMF Catalog using the ProductID and retrieve the SLA_ID or the SLA_Href.
+ - Fetch SLA from SCLCM using the SLA_ID
    - Store the SLA for future use.
  - Subscribe to the Product in the Datalake using the ProductId 
 
 ![Preparation Phase](images/preparation_phase.png)
 
-2. **Monitoring**
+1. **Monitoring**
 In this phase, we wait for data to arrive to our kafka input topic and when it does we check if a clause has been violated, emitting a violation if needed. It stands to reason that while the monitoring data comes from the MDA, it is the datalake that copies it into our input topic.
 
 -  (Pre-Setup) Connect to sla-monitor-topic-in in the datalake
 - Monitoring Data Event Arrives 
   - Retrieve the TransactionId and ProductId from the Event
 - Get the SLA from Storage
-  - (If not stored) Get the Product from the TMF Catalog API using this ProductId
-  - (If not stored) Retrieve the SLA id from the Product 
-  - (If not stored) Get the SLA from the SCLM component using the SLA Id
+  - (If not stored) Error (No way to refetch since We don't have SLAID)
 - Check for Clause Violation
 - (If True) Emit Violation
 
@@ -54,6 +52,7 @@ In this phase, we wait for data to arrive to our kafka input topic and when it d
   "eventType": "new_SLA_ACK",
   "transactionID": "5f1da43fcc3c46809ce70b3186d0d2cd",
   "productID": "3e922f24-01ec-4f83-8328-b69dc9ab8f8e",
+  "SLAID": "3e922f24-01ec-4f83-8328-b69dc9ab8f8e",
   "status": "COMPLETED"
 }
 ```
@@ -91,7 +90,7 @@ In this phase, we wait for data to arrive to our kafka input topic and when it d
 }
 ```
 
-2. The **ProductId** is used to get the Product from the TMF Catalog which has a **ServiceLevelAgreement** Field.
+2. (Deprecated) The **ProductId** is used to get the Product from the TMF Catalog which has a **ServiceLevelAgreement** Field.
 ```
   TMF Catalog API URL
 
@@ -122,9 +121,9 @@ In this phase, we wait for data to arrive to our kafka input topic and when it d
   }
 ```
 
-3. From the Product, we retrieve the **Sla Id** or the **SLA Href** field which will be used to fetch the SLA Template and its clauses from the SCLCM component.
+3. (Deprecated) From the Product, we retrieve the **Sla Id** or the **SLA Href** field which will be used to fetch the SLA Template and its clauses from the SCLCM component.
 
-4. We can either use the **SLA Id**, to fetch the SLA from the SCLCM component or we can directly use the **SLA Href** field which holds the URL to directly fetch the SLA. It stands to reason that we currently retrieve the href field and use it to fetch the SLA.
+4. We use the **SLA Id**, to fetch the SLA from the SCLCM component
 
 ```
   SCLCM API URL
@@ -210,7 +209,7 @@ data = {
 }
 ```
 
-1. This **TransactionID** can be used to fetch the SLA from the local intermediate storage and if it is needed, we can use the **ProductID** re-fetch it from the SCLCM component (As previously mentioned in the Preparation Phase) if needed.
+1. This **TransactionID** can be used to fetch the SLA from the local intermediate storage.
 
 2. After fetching the SLA, we extract the required information from it:
 ```
@@ -338,7 +337,7 @@ The datalake will fetch that productId info from ISSM output topic (isbp-topic) 
 
 Subscribe a productID
 ```
-curl -i -H "Content-Type: application/json" -X POST -d ' { "userInfo": { "userId": "sla-monitor", "authToken": "blah" }, "productInfo": { "topic": "sla-monitor-topic-in" } } ' http://172.28.3.46:30887/datalake/v1/stream_data/register/<PRODUCTID>
+curl -i -H "Content-Type: application/json" -X POST -d ' { "userInfo": { "userId": "sla-monitor", "authToken": "blah" }, "productInfo": { "topic": "sla-monitor-topic-in" } } ' http://172.28.3.46:32275/datalake/v1/stream_data/register/P44RJzPQ9NWPE7QTDX4ZhA
 
 ```
 
@@ -353,16 +352,11 @@ Check all users
 ## Prerequisites
 
 ### 5GZORRO Module dependencies
-For the SLA-Monitoring we have to connect to the Datalake which provides us with the Input and output topics from which we can subscribe and publish data into. Additionally, we must directly interact with the TMF Catalog to fetch the product and with the SCLCM to retrieve the SLA and also to notify when a violation occurs.  
+For the SLA-Monitoring we have to connect to the Datalake which provides us with the Input and output topics from which we can subscribe and publish data into. Additionally, we must directly interact with the SCLCM to retrieve the SLA and also to notify when a violation occurs.  
 
 SCLCM Swagger
 ```
 http://172.28.3.111:31080/smart-contract-lifecycle-manager/swagger-ui/index.html?configUrl=/smart-contract-lifecycle-manager/api-docs/swagger-config#/
-```
-
-TMF Catalog Swagger
-```
-http://172.28.3.15:31080/tmf-api/swagger-ui/#/
 ```
 
 ## Docker Deployment
